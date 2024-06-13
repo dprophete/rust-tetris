@@ -1,5 +1,3 @@
-use std::cell::Cell;
-
 use gamestate::GameState;
 use ruscii::app::{App, State};
 use ruscii::drawing::Pencil;

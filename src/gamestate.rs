@@ -26,7 +26,7 @@ impl GameState {
         }
     }
 
-    pub fn place_piece(&mut self, piece: &Piece) {
+    fn place_piece(&mut self, piece: &Piece) {
         for cell in piece.cells().iter() {
             let x = piece.pos.x + cell.x;
             let y = piece.pos.y + cell.y;
