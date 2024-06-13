@@ -1,10 +1,11 @@
-use gamestate::GameState;
+use gamestate::{GameState, Piece};
 use ruscii::app::{App, State};
 use ruscii::drawing::Pencil;
 use ruscii::gui::FPSCounter;
 use ruscii::keyboard::{Key, KeyEvent};
 use ruscii::spatial::Vec2;
 use ruscii::terminal::Window;
+use tetromino::Tetromino;
 
 mod gamestate;
 mod tetromino;
@@ -15,7 +16,12 @@ fn main() {
     let win_size = app.window().size();
     let mut state = GameState::new((win_size * 5) / 5);
 
-    state.init_with_all_pieces();
+    // state.init_with_all_pieces();
+    state.pick_current_piece();
+
+    let mut first_piece = Piece::new(Tetromino::L);
+    first_piece.pos = Vec2::xy(10, 0);
+    state.current_piece = Some(first_piece);
 
     app.run(|app_state: &mut State, window: &mut Window| {
         for key_event in app_state.keyboard().last_key_events() {
@@ -26,24 +32,14 @@ fn main() {
             }
         }
 
-        for key_down in app_state.keyboard().get_keys_down() {
-            match key_down {
-                Key::A => state.upd_gpos(Vec2::xy(-1, 0)),
-                Key::D => state.upd_gpos(Vec2::xy(1, 0)),
-                Key::W => state.upd_gpos(Vec2::xy(0, -1)),
-                Key::S => state.upd_gpos(Vec2::xy(0, 1)),
-                _ => (),
-            }
-        }
-
         fps_counter.update();
-        if app_state.step() % 2 == 0 {
-            state.update();
-        }
-
+        let step = app_state.step();
         let mut pencil = Pencil::new(window.canvas_mut());
-        pencil.draw_text(&format!("FPS: {}", fps_counter.count()), Vec2::xy(1, 1));
-        pencil.draw_text(&format!("gridpos: {}", state.gpos), Vec2::xy(1, 2));
+
+        for key_down in app_state.keyboard().get_keys_down() {
+            state.handle_key_down(step, key_down);
+        }
+        state.update(step);
         state.draw(&mut pencil);
     });
 }

@@ -42,6 +42,20 @@ impl Tetromino {
         }
     }
 
+    pub fn random() -> Self {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        match rng.gen_range(0..7) {
+            0 => Tetromino::I,
+            1 => Tetromino::J,
+            2 => Tetromino::L,
+            3 => Tetromino::O,
+            4 => Tetromino::S,
+            5 => Tetromino::T,
+            _ => Tetromino::Z,
+        }
+    }
+
     // using: https://strategywiki.org/wiki/File:Tetris_rotation_super.png
     pub fn cells(&self, mut rot: i32) -> Vec<Vec2> {
         rot = rot % 4;
