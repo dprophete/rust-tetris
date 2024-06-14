@@ -19,10 +19,6 @@ fn main() {
     // state.init_with_all_pieces();
     state.pick_current_piece();
 
-    let mut first_piece = Piece::new(Tetromino::L);
-    first_piece.pos = Vec2::xy(10, 0);
-    state.current_piece = Some(first_piece);
-
     app.run(|app_state: &mut State, window: &mut Window| {
         for key_event in app_state.keyboard().last_key_events() {
             match key_event {

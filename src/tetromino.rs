@@ -214,7 +214,7 @@ impl Tetromino {
                     Vec2::xy(0, 1),
                     Vec2::xy(1, 1),
                     Vec2::xy(2, 1),
-                    Vec2::xy(2, 2),
+                    Vec2::xy(1, 2),
                 ],
                 _ => vec![
                     Vec2::xy(1, 0),

@@ -4,8 +4,8 @@ use ruscii::{drawing::Pencil, keyboard::Key, spatial::Vec2, terminal::Color};
 
 use crate::tetromino::Tetromino;
 
-const GRID_WIDTH: i32 = 20;
-const GRID_HEIGHT: i32 = 40;
+const GRID_WIDTH: i32 = 10;
+const GRID_HEIGHT: i32 = 20;
 
 pub struct GameState {
     pub dimension: Vec2,
@@ -13,6 +13,7 @@ pub struct GameState {
     pub gpos: Vec2,
     pub pieces: Vec<Piece>,
     pub current_piece: Option<Piece>,
+    pub prev_key: Option<Key>,
 }
 
 impl GameState {
@@ -23,11 +24,28 @@ impl GameState {
             gpos: Vec2::xy((dim.x - GRID_WIDTH * 2) / 2, (dim.y - GRID_HEIGHT) / 2),
             pieces: vec![],
             current_piece: None,
+            prev_key: None,
         }
     }
 
     fn is_in_grid(&self, pos: Vec2) -> bool {
-        return pos.x >= 0 && pos.x < GRID_WIDTH && pos.y >= 0 && pos.y < GRID_HEIGHT;
+        pos.x >= 0 && pos.x < GRID_WIDTH && pos.y >= 0 && pos.y < GRID_HEIGHT
+    }
+
+    fn is_in_empty_pos(&self, pos: Vec2) -> bool {
+        match self.grid[pos.y as usize][pos.x as usize] {
+            Cell::Empty => true,
+            _ => false,
+        }
+    }
+
+    fn is_piece_in_empty_pos(&self, piece: &Piece) -> bool {
+        for cell in piece.cells().iter() {
+            if !self.is_in_empty_pos(piece.pos + *cell) {
+                return false;
+            }
+        }
+        return true;
     }
 
     fn is_piece_in_grid(&self, piece: &Piece) -> bool {
@@ -42,7 +60,7 @@ impl GameState {
     pub fn pick_current_piece(&mut self) {
         let tetromino = Tetromino::random();
         let mut piece = Piece::new(tetromino);
-        piece.pos = Vec2::xy(GRID_WIDTH / 2, 0);
+        piece.pos = Vec2::xy(GRID_WIDTH / 2 - 1, 0);
         self.current_piece = Some(piece);
     }
 
@@ -56,16 +74,32 @@ impl GameState {
         }
     }
 
+    fn remove_piece(&mut self, piece: &Piece) {
+        for cell in piece.cells().iter() {
+            let x = piece.pos.x + cell.x;
+            let y = piece.pos.y + cell.y;
+            if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
+                self.grid[y as usize][x as usize] = Cell::Empty;
+            }
+        }
+    }
+
     pub fn handle_key_down(&mut self, _step: usize, key_down: Key) {
+        if Some(key_down) == self.prev_key {
+            self.prev_key = None;
+            return;
+        }
+        self.prev_key = Some(key_down);
+
         match key_down {
-            Key::A => self.move_gpos(Vec2::xy(-1, 0)),
-            Key::D => self.move_gpos(Vec2::xy(1, 0)),
+            Key::A => self.move_gpos(Vec2::xy(-2, 0)),
+            Key::D => self.move_gpos(Vec2::xy(2, 0)),
             Key::W => self.move_gpos(Vec2::xy(0, -1)),
             Key::S => self.move_gpos(Vec2::xy(0, 1)),
             Key::Space => _ = self.rotate_current_piece(),
             Key::Left => _ = self.move_current_piece(Vec2::xy(-1, 0)),
             Key::Right => _ = self.move_current_piece(Vec2::xy(1, 0)),
-            Key::Up => _ = self.move_current_piece(Vec2::xy(0, -1)),
+            // Key::Up => _ = self.move_current_piece(Vec2::xy(0, -1)),
             Key::Down => _ = self.move_current_piece(Vec2::xy(0, 1)),
             _ => (),
         }
@@ -115,9 +149,12 @@ impl GameState {
 
     pub fn move_current_piece(&mut self, delta: Vec2) -> bool {
         if let Some(piece) = self.current_piece {
+            // let's first make sure we remove the current piece from the grid
+            self.remove_piece(&piece);
+
             let mut new_piece = piece.clone();
             new_piece.pos += delta;
-            if self.is_piece_in_grid(&new_piece) {
+            if self.is_piece_in_grid(&new_piece) && self.is_piece_in_empty_pos(&new_piece) {
                 self.current_piece = Some(new_piece);
                 return true;
             }
@@ -127,9 +164,13 @@ impl GameState {
 
     pub fn rotate_current_piece(&mut self) -> bool {
         if let Some(piece) = self.current_piece {
+            // let's first make sure we remove the current piece from the grid
+            self.remove_piece(&piece);
+
             let mut new_piece = piece.clone();
             new_piece.rotate(1);
-            if self.is_piece_in_grid(&new_piece) {
+
+            if self.is_piece_in_grid(&new_piece) && self.is_piece_in_empty_pos(&new_piece) {
                 self.current_piece = Some(new_piece);
                 return true;
             }
@@ -144,7 +185,7 @@ impl GameState {
                 let x = x as i32 * 2;
                 let pos = Vec2::xy(x + self.gpos.x, y + self.gpos.y);
                 match cell {
-                    Cell::Empty => pencil.set_background(Color::Black).draw_text("••", pos),
+                    Cell::Empty => pencil.set_background(Color::Black).draw_text("∙∙", pos),
                     Cell::Tetromino(tetromino) => pencil
                         .set_background(tetromino.color())
                         .draw_text("  ", pos),
