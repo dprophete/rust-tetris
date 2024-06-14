@@ -71,8 +71,17 @@ impl GameState {
             return;
         }
 
-        // moving piece
+        // moving current piece
         if self.current_piece.is_some() {
+            // remove shadow
+            for y in 0..GRID_HEIGHT {
+                for x in 0..GRID_WIDTH {
+                    if self.grid[y as usize][x as usize] == Cell::Shadow {
+                        self.grid[y as usize][x as usize] = Cell::Empty;
+                    }
+                }
+            }
+
             let mut draw_current = true;
             let step_delay = if self.drop_current_piece { 1 } else { 10 };
             if step % step_delay == 0 {
@@ -82,6 +91,19 @@ impl GameState {
             if draw_current {
                 // piece was able to go down
                 let current_piece = self.current_piece.unwrap();
+
+                // draw shadow
+                self.remove_piece(&current_piece);
+                let mut shadow_piece = current_piece.clone();
+
+                while self.is_piece_in_grid(&shadow_piece)
+                    && self.is_piece_in_empty_pos(&shadow_piece)
+                {
+                    shadow_piece.pos.y = shadow_piece.pos.y + 1;
+                }
+                shadow_piece.pos.y = shadow_piece.pos.y - 1;
+                self.place_shadow(&shadow_piece);
+
                 self.place_piece(&current_piece);
             } else {
                 // piece reached the bottom
@@ -89,7 +111,7 @@ impl GameState {
                 self.place_piece(&current_piece);
 
                 // check if we have a full rows
-                for y in (0..GRID_HEIGHT).rev() {
+                for y in 0..GRID_HEIGHT {
                     if self.is_row_full(y) {
                         // move all rows above one row down
                         for y2 in (0..y).rev() {
@@ -109,17 +131,32 @@ impl GameState {
         }
     }
 
-    pub fn draw(&mut self, pencil: &mut Pencil) {
+    fn tx_to_grid(&self, x: i32, y: i32) -> Vec2 {
+        return Vec2::xy(x + self.gpos.x, y + self.gpos.y);
+    }
+
+    pub fn draw(&mut self, pencil: &mut Pencil, _step: usize) {
+        // draw border
+        pencil.set_foreground(Color::White);
+        pencil.draw_vline('|', self.tx_to_grid(-1, 0), GRID_HEIGHT);
+        pencil.draw_vline('|', self.tx_to_grid(GRID_WIDTH * 2, 0), GRID_HEIGHT);
+        pencil.draw_hline('-', self.tx_to_grid(0, GRID_HEIGHT), GRID_WIDTH * 2);
+        pencil.draw_text("+", self.tx_to_grid(-1, GRID_HEIGHT));
+        pencil.draw_text("+", self.tx_to_grid(GRID_WIDTH * 2, GRID_HEIGHT));
+
+        // draw grid
+        pencil.set_foreground(Color::LightGrey);
         for (y, row) in self.grid.iter().enumerate() {
             let y = y as i32;
             for (x, cell) in row.iter().enumerate() {
                 let x = x as i32 * 2;
-                let pos = Vec2::xy(x + self.gpos.x, y + self.gpos.y);
+                let pos = self.tx_to_grid(x, y);
                 match cell {
                     Cell::Empty => pencil.set_background(Color::Black).draw_text("∙∙", pos),
                     Cell::Tetromino(tetromino) => pencil
                         .set_background(tetromino.color())
                         .draw_text("  ", pos),
+                    Cell::Shadow => pencil.set_background(Color::DarkGrey).draw_text("∙∙", pos),
                 };
             }
         }
@@ -134,7 +171,8 @@ impl GameState {
     }
 
     fn is_in_empty_pos(&self, pos: Vec2) -> bool {
-        self.grid[pos.y as usize][pos.x as usize] == Cell::Empty
+        let cell = self.grid[pos.y as usize][pos.x as usize];
+        cell == Cell::Empty || cell == Cell::Shadow
     }
 
     fn copy_row_down(&mut self, row: i32) {
@@ -188,6 +226,16 @@ impl GameState {
             let y = piece.pos.y + cell.y;
             if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
                 self.grid[y as usize][x as usize] = Cell::Tetromino(piece.tetromino);
+            }
+        }
+    }
+
+    fn place_shadow(&mut self, piece: &Piece) {
+        for cell in piece.cells().iter() {
+            let x = piece.pos.x + cell.x;
+            let y = piece.pos.y + cell.y;
+            if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
+                self.grid[y as usize][x as usize] = Cell::Shadow;
             }
         }
     }
@@ -298,4 +346,5 @@ impl Piece {
 pub enum Cell {
     Empty,
     Tetromino(Tetromino),
+    Shadow,
 }

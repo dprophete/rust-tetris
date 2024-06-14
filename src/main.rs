@@ -38,6 +38,6 @@ fn main() {
         }
 
         state.update(step);
-        state.draw(&mut pencil);
+        state.draw(&mut pencil, step);
     });
 }
