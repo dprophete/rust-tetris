@@ -1,3 +1,4 @@
+use rand::Rng;
 use ruscii::{spatial::Vec2, terminal::Color};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -43,9 +44,7 @@ impl Tetromino {
     }
 
     pub fn random() -> Self {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        match rng.gen_range(0..7) {
+        match rand::thread_rng().gen_range(0..7) {
             0 => Tetromino::I,
             1 => Tetromino::J,
             2 => Tetromino::L,
