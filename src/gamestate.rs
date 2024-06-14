@@ -22,6 +22,8 @@ pub struct GameState {
     running: State,
     drop_current_piece: bool,
     lines_cleared: i32,
+    nb_next_pieces: i32,
+    next_pieces: Vec<Tetromino>,
 }
 
 impl GameState {
@@ -35,10 +37,16 @@ impl GameState {
             running: State::Running,
             drop_current_piece: false,
             lines_cleared: 0,
+            nb_next_pieces: 3,
+            next_pieces: vec![],
         }
     }
 
     pub fn init(&mut self) {
+        for _ in 0..self.nb_next_pieces {
+            self.next_pieces.push(Tetromino::random());
+        }
+
         // self.init_with_all_pieces();
         self.pick_current_piece();
     }
@@ -150,9 +158,20 @@ impl GameState {
             &format!("lines cleared: {}", self.lines_cleared),
             self.tx_to_grid(GRID_WIDTH * 2 + 4, 0),
         );
+        pencil
+            .set_foreground(Color::White)
+            .draw_text("next pieces:", self.tx_to_grid(GRID_WIDTH * 2 + 4, 2));
+
+        for (i, tetromino) in self.next_pieces.clone().iter().enumerate() {
+            let mut piece = Piece::new(*tetromino);
+            piece.pos = self.tx_to_grid(GRID_WIDTH * 2 + 4, 4 + i as i32 * 5);
+            self.draw_piece(pencil, &piece);
+        }
 
         // draw border
-        pencil.set_foreground(Color::White);
+        pencil
+            .set_background(Color::Black)
+            .set_foreground(Color::White);
         pencil.draw_vline('|', self.tx_to_grid(-1, 0), GRID_HEIGHT);
         pencil.draw_vline('|', self.tx_to_grid(GRID_WIDTH * 2, 0), GRID_HEIGHT);
         pencil.draw_hline('-', self.tx_to_grid(0, GRID_HEIGHT), GRID_WIDTH * 2);
@@ -232,7 +251,8 @@ impl GameState {
     }
 
     pub fn pick_current_piece(&mut self) {
-        let tetromino = Tetromino::random();
+        let tetromino = self.next_pieces.remove(0);
+        self.next_pieces.push(Tetromino::random());
         let mut piece = Piece::new(tetromino);
         piece.pos = Vec2::xy(GRID_WIDTH / 2 - 1, 0);
         self.current_piece = Some(piece);
@@ -246,6 +266,15 @@ impl GameState {
             if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
                 self.grid[y as usize][x as usize] = Cell::Tetromino(piece.tetromino);
             }
+        }
+    }
+
+    fn draw_piece(&mut self, pencil: &mut Pencil, piece: &Piece) {
+        pencil.set_background(piece.tetromino.color());
+        for cell in piece.cells().iter() {
+            let x = piece.pos.x + cell.x * 2;
+            let y = piece.pos.y + cell.y;
+            pencil.draw_text("  ", Vec2::xy(x, y));
         }
     }
 
