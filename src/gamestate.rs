@@ -17,9 +17,8 @@ pub struct GameState {
     dimension: Vec2,
     grid: [[Cell; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
     gpos: Vec2,
-    pieces: Vec<Piece>,
     current_piece: Option<Piece>,
-    prev_key: Option<Key>,
+    pub prev_key: Option<Key>,
     running: State,
     drop_current_piece: bool,
 }
@@ -30,7 +29,6 @@ impl GameState {
             dimension: dim,
             grid: [[Cell::Empty; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
             gpos: Vec2::xy((dim.x - GRID_WIDTH * 2) / 2, (dim.y - GRID_HEIGHT) / 2),
-            pieces: vec![],
             current_piece: None,
             prev_key: None,
             running: State::Running,
@@ -45,10 +43,14 @@ impl GameState {
 
     pub fn handle_key_down(&mut self, _step: usize, key_down: Key) {
         if Some(key_down) == self.prev_key {
-            self.prev_key = None;
+            match key_down {
+                // don't repeat these
+                Key::Up | Key::Space | Key::Down => {}
+                // everything else, we just slow down the repeat
+                _ => self.prev_key = None,
+            }
             return;
         }
-        self.prev_key = Some(key_down);
 
         match key_down {
             Key::A => self.move_gpos(Vec2::xy(-2, 0)),
@@ -61,19 +63,12 @@ impl GameState {
             Key::Down => _ = self.drop_current_piece(),
             _ => (),
         }
+        self.prev_key = Some(key_down);
     }
 
     pub fn update(&mut self, step: usize) {
         if self.running == State::GameOver {
             return;
-        }
-
-        self.grid = [[Cell::Empty; GRID_WIDTH as usize]; GRID_HEIGHT as usize];
-
-        // static pieces
-        let pieces = self.pieces.clone();
-        for piece in pieces.iter() {
-            self.place_piece(piece);
         }
 
         // moving piece
@@ -91,8 +86,20 @@ impl GameState {
             } else {
                 // piece reached the bottom
                 let current_piece = self.current_piece.unwrap();
-                self.pieces.push(current_piece);
                 self.place_piece(&current_piece);
+
+                // check if we have a full rows
+                for y in (0..GRID_HEIGHT).rev() {
+                    if self.is_row_full(y) {
+                        // move all rows above one row down
+                        for y2 in (0..y).rev() {
+                            self.copy_row_down(y2);
+                        }
+
+                        // clear top row
+                        self.clear_row(0);
+                    }
+                }
 
                 // pick a new piece
                 self.pick_current_piece();
@@ -100,8 +107,6 @@ impl GameState {
                 self.place_piece(&self.current_piece.unwrap());
             }
         }
-
-        // check if we have a full row, startinf from the bottom
     }
 
     pub fn draw(&mut self, pencil: &mut Pencil) {
@@ -130,6 +135,16 @@ impl GameState {
 
     fn is_in_empty_pos(&self, pos: Vec2) -> bool {
         self.grid[pos.y as usize][pos.x as usize] == Cell::Empty
+    }
+
+    fn copy_row_down(&mut self, row: i32) {
+        self.grid[(row + 1) as usize] = self.grid[row as usize].clone();
+    }
+
+    fn clear_row(&mut self, row: i32) {
+        for x in 0..GRID_WIDTH {
+            self.grid[row as usize][x as usize] = Cell::Empty;
+        }
     }
 
     fn is_row_full(&self, row: i32) -> bool {
@@ -247,7 +262,7 @@ impl GameState {
                 let mut piece = Piece::new(*t);
                 piece.pos = Vec2::xy(rot * 5, t_nb as i32 * 5);
                 piece.rotate(rot);
-                self.pieces.push(piece);
+                self.place_piece(&piece);
             }
         }
     }
