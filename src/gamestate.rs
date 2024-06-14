@@ -7,13 +7,21 @@ use crate::tetromino::Tetromino;
 const GRID_WIDTH: i32 = 10;
 const GRID_HEIGHT: i32 = 20;
 
+#[derive(PartialEq)]
+enum State {
+    Running,
+    GameOver,
+}
+
 pub struct GameState {
-    pub dimension: Vec2,
-    pub grid: [[Cell; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
-    pub gpos: Vec2,
-    pub pieces: Vec<Piece>,
-    pub current_piece: Option<Piece>,
-    pub prev_key: Option<Key>,
+    dimension: Vec2,
+    grid: [[Cell; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
+    gpos: Vec2,
+    pieces: Vec<Piece>,
+    current_piece: Option<Piece>,
+    prev_key: Option<Key>,
+    running: State,
+    drop_current_piece: bool,
 }
 
 impl GameState {
@@ -25,8 +33,94 @@ impl GameState {
             pieces: vec![],
             current_piece: None,
             prev_key: None,
+            running: State::Running,
+            drop_current_piece: false,
         }
     }
+
+    pub fn init(&mut self) {
+        // self.init_with_all_pieces();
+        self.pick_current_piece();
+    }
+
+    pub fn handle_key_down(&mut self, _step: usize, key_down: Key) {
+        if Some(key_down) == self.prev_key {
+            self.prev_key = None;
+            return;
+        }
+        self.prev_key = Some(key_down);
+
+        match key_down {
+            Key::A => self.move_gpos(Vec2::xy(-2, 0)),
+            Key::D => self.move_gpos(Vec2::xy(2, 0)),
+            Key::W => self.move_gpos(Vec2::xy(0, -1)),
+            Key::S => self.move_gpos(Vec2::xy(0, 1)),
+            Key::Up | Key::Space => _ = self.rotate_current_piece(),
+            Key::Left => _ = self.move_current_piece(Vec2::xy(-1, 0)),
+            Key::Right => _ = self.move_current_piece(Vec2::xy(1, 0)),
+            Key::Down => _ = self.drop_current_piece(),
+            _ => (),
+        }
+    }
+
+    pub fn update(&mut self, step: usize) {
+        if self.running == State::GameOver {
+            return;
+        }
+
+        self.grid = [[Cell::Empty; GRID_WIDTH as usize]; GRID_HEIGHT as usize];
+
+        // static pieces
+        let pieces = self.pieces.clone();
+        for piece in pieces.iter() {
+            self.place_piece(piece);
+        }
+
+        // moving piece
+        if self.current_piece.is_some() {
+            let mut draw_current = true;
+            let step_delay = if self.drop_current_piece { 1 } else { 10 };
+            if step % step_delay == 0 {
+                draw_current = self.move_current_piece(Vec2::xy(0, 1));
+            }
+
+            if draw_current {
+                // piece was able to go down
+                let current_piece = self.current_piece.unwrap();
+                self.place_piece(&current_piece);
+            } else {
+                // piece reached the bottom
+                let current_piece = self.current_piece.unwrap();
+                self.pieces.push(current_piece);
+                self.place_piece(&current_piece);
+
+                // pick a new piece
+                self.pick_current_piece();
+                // TODO: check if game over
+                self.place_piece(&self.current_piece.unwrap());
+            }
+        }
+    }
+
+    pub fn draw(&mut self, pencil: &mut Pencil) {
+        for (y, row) in self.grid.iter().enumerate() {
+            let y = y as i32;
+            for (x, cell) in row.iter().enumerate() {
+                let x = x as i32 * 2;
+                let pos = Vec2::xy(x + self.gpos.x, y + self.gpos.y);
+                match cell {
+                    Cell::Empty => pencil.set_background(Color::Black).draw_text("∙∙", pos),
+                    Cell::Tetromino(tetromino) => pencil
+                        .set_background(tetromino.color())
+                        .draw_text("  ", pos),
+                };
+            }
+        }
+    }
+
+    //--------------------------------------------------------------------------------
+    // helpers
+    //--------------------------------------------------------------------------------
 
     fn is_in_grid(&self, pos: Vec2) -> bool {
         pos.x >= 0 && pos.x < GRID_WIDTH && pos.y >= 0 && pos.y < GRID_HEIGHT
@@ -62,6 +156,7 @@ impl GameState {
         let mut piece = Piece::new(tetromino);
         piece.pos = Vec2::xy(GRID_WIDTH / 2 - 1, 0);
         self.current_piece = Some(piece);
+        self.drop_current_piece = false;
     }
 
     fn place_piece(&mut self, piece: &Piece) {
@@ -84,62 +179,7 @@ impl GameState {
         }
     }
 
-    pub fn handle_key_down(&mut self, _step: usize, key_down: Key) {
-        if Some(key_down) == self.prev_key {
-            self.prev_key = None;
-            return;
-        }
-        self.prev_key = Some(key_down);
-
-        match key_down {
-            Key::A => self.move_gpos(Vec2::xy(-2, 0)),
-            Key::D => self.move_gpos(Vec2::xy(2, 0)),
-            Key::W => self.move_gpos(Vec2::xy(0, -1)),
-            Key::S => self.move_gpos(Vec2::xy(0, 1)),
-            Key::Space => _ = self.rotate_current_piece(),
-            Key::Left => _ = self.move_current_piece(Vec2::xy(-1, 0)),
-            Key::Right => _ = self.move_current_piece(Vec2::xy(1, 0)),
-            // Key::Up => _ = self.move_current_piece(Vec2::xy(0, -1)),
-            Key::Down => _ = self.move_current_piece(Vec2::xy(0, 1)),
-            _ => (),
-        }
-    }
-
-    pub fn update(&mut self, step: usize) {
-        self.grid = [[Cell::Empty; GRID_WIDTH as usize]; GRID_HEIGHT as usize];
-
-        // static pieces
-        let pieces = self.pieces.clone();
-        for piece in pieces.iter() {
-            self.place_piece(piece);
-        }
-
-        // moving piece
-        if self.current_piece.is_some() {
-            let mut draw_current = true;
-            if step % 10 == 0 {
-                draw_current = self.move_current_piece(Vec2::xy(0, 1));
-            }
-
-            if draw_current {
-                // piece was able to go down
-                let current_piece = self.current_piece.unwrap();
-                self.place_piece(&current_piece);
-            } else {
-                // piece reached the bottom
-                let current_piece = self.current_piece.unwrap();
-                self.pieces.push(current_piece);
-                self.place_piece(&current_piece);
-
-                // pick a new piece
-                self.pick_current_piece();
-                // TODO: check if game over
-                self.place_piece(&self.current_piece.unwrap());
-            }
-        }
-    }
-
-    pub fn move_gpos(&mut self, delta: Vec2) {
+    fn move_gpos(&mut self, delta: Vec2) {
         self.gpos += delta;
         self.gpos.x = max(0, self.gpos.x);
         self.gpos.y = max(0, self.gpos.y);
@@ -147,7 +187,11 @@ impl GameState {
         self.gpos.y = min(self.dimension.y - GRID_WIDTH * 2, self.gpos.y);
     }
 
-    pub fn move_current_piece(&mut self, delta: Vec2) -> bool {
+    fn drop_current_piece(&mut self) {
+        self.drop_current_piece = true;
+    }
+
+    fn move_current_piece(&mut self, delta: Vec2) -> bool {
         if let Some(piece) = self.current_piece {
             // let's first make sure we remove the current piece from the grid
             self.remove_piece(&piece);
@@ -162,7 +206,7 @@ impl GameState {
         return false;
     }
 
-    pub fn rotate_current_piece(&mut self) -> bool {
+    fn rotate_current_piece(&mut self) -> bool {
         if let Some(piece) = self.current_piece {
             // let's first make sure we remove the current piece from the grid
             self.remove_piece(&piece);
@@ -178,23 +222,7 @@ impl GameState {
         return false;
     }
 
-    pub fn draw(&mut self, pencil: &mut Pencil) {
-        for (y, row) in self.grid.iter().enumerate() {
-            let y = y as i32;
-            for (x, cell) in row.iter().enumerate() {
-                let x = x as i32 * 2;
-                let pos = Vec2::xy(x + self.gpos.x, y + self.gpos.y);
-                match cell {
-                    Cell::Empty => pencil.set_background(Color::Black).draw_text("∙∙", pos),
-                    Cell::Tetromino(tetromino) => pencil
-                        .set_background(tetromino.color())
-                        .draw_text("  ", pos),
-                };
-            }
-        }
-    }
-
-    pub fn init_with_all_pieces(&mut self) {
+    fn init_with_all_pieces(&mut self) {
         for (t_nb, t) in [
             Tetromino::I,
             Tetromino::J,
