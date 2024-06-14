@@ -21,6 +21,7 @@ pub struct GameState {
     pub prev_key: Option<Key>,
     running: State,
     drop_current_piece: bool,
+    lines_cleared: i32,
 }
 
 impl GameState {
@@ -33,6 +34,7 @@ impl GameState {
             prev_key: None,
             running: State::Running,
             drop_current_piece: false,
+            lines_cleared: 0,
         }
     }
 
@@ -41,7 +43,16 @@ impl GameState {
         self.pick_current_piece();
     }
 
-    pub fn handle_key_down(&mut self, _step: usize, key_down: Key) {
+    pub fn handle_keys_down(&mut self, keys_down: Vec<Key>, step: usize) {
+        if keys_down.is_empty() {
+            self.prev_key = None;
+        } else {
+            for key_down in keys_down {
+                self.handle_key_down(key_down, step);
+            }
+        }
+    }
+    fn handle_key_down(&mut self, key_down: Key, _step: usize) {
         if Some(key_down) == self.prev_key {
             match key_down {
                 // don't repeat these
@@ -114,6 +125,7 @@ impl GameState {
                 for y in 0..GRID_HEIGHT {
                     if self.is_row_full(y) {
                         // move all rows above one row down
+                        self.lines_cleared += 1;
                         for y2 in (0..y).rev() {
                             self.copy_row_down(y2);
                         }
@@ -131,11 +143,14 @@ impl GameState {
         }
     }
 
-    fn tx_to_grid(&self, x: i32, y: i32) -> Vec2 {
-        return Vec2::xy(x + self.gpos.x, y + self.gpos.y);
-    }
-
     pub fn draw(&mut self, pencil: &mut Pencil, _step: usize) {
+        // score
+        pencil.set_foreground(Color::White);
+        pencil.set_foreground(Color::White).draw_text(
+            &format!("lines cleared: {}", self.lines_cleared),
+            self.tx_to_grid(GRID_WIDTH * 2 + 4, 0),
+        );
+
         // draw border
         pencil.set_foreground(Color::White);
         pencil.draw_vline('|', self.tx_to_grid(-1, 0), GRID_HEIGHT);
@@ -165,6 +180,10 @@ impl GameState {
     //--------------------------------------------------------------------------------
     // helpers
     //--------------------------------------------------------------------------------
+
+    fn tx_to_grid(&self, x: i32, y: i32) -> Vec2 {
+        return Vec2::xy(x + self.gpos.x, y + self.gpos.y);
+    }
 
     fn is_in_grid(&self, pos: Vec2) -> bool {
         pos.x >= 0 && pos.x < GRID_WIDTH && pos.y >= 0 && pos.y < GRID_HEIGHT

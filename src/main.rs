@@ -28,15 +28,7 @@ fn main() {
         let step = app_state.step();
         let mut pencil = Pencil::new(window.canvas_mut());
 
-        let keys_down = app_state.keyboard().get_keys_down();
-        if keys_down.is_empty() {
-            state.prev_key = None;
-        } else {
-            for key_down in keys_down {
-                state.handle_key_down(step, key_down);
-            }
-        }
-
+        state.handle_keys_down(app_state.keyboard().get_keys_down(), step);
         state.update(step);
         state.draw(&mut pencil, step);
     });
