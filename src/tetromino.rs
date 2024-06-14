@@ -1,6 +1,6 @@
 use ruscii::{spatial::Vec2, terminal::Color};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Tetromino {
     // X
     // X

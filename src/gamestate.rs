@@ -100,6 +100,8 @@ impl GameState {
                 self.place_piece(&self.current_piece.unwrap());
             }
         }
+
+        // check if we have a full row, startinf from the bottom
     }
 
     pub fn draw(&mut self, pencil: &mut Pencil) {
@@ -127,10 +129,16 @@ impl GameState {
     }
 
     fn is_in_empty_pos(&self, pos: Vec2) -> bool {
-        match self.grid[pos.y as usize][pos.x as usize] {
-            Cell::Empty => true,
-            _ => false,
+        self.grid[pos.y as usize][pos.x as usize] == Cell::Empty
+    }
+
+    fn is_row_full(&self, row: i32) -> bool {
+        for x in 0..GRID_WIDTH {
+            if self.grid[row as usize][x as usize] == Cell::Empty {
+                return false;
+            }
         }
+        true
     }
 
     fn is_piece_in_empty_pos(&self, piece: &Piece) -> bool {
@@ -139,7 +147,7 @@ impl GameState {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     fn is_piece_in_grid(&self, piece: &Piece) -> bool {
@@ -148,7 +156,7 @@ impl GameState {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     pub fn pick_current_piece(&mut self) {
@@ -271,7 +279,7 @@ impl Piece {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Cell {
     Empty,
     Tetromino(Tetromino),
