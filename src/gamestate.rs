@@ -45,7 +45,7 @@ impl GameState {
         if Some(key_down) == self.prev_key {
             match key_down {
                 // don't repeat these
-                Key::Up | Key::Space | Key::Down => {}
+                Key::Up | Key::Space | Key::Down | Key::Enter => {}
                 // everything else, we just slow down the repeat
                 _ => self.prev_key = None,
             }
@@ -58,9 +58,9 @@ impl GameState {
             Key::W => self.move_gpos(Vec2::xy(0, -1)),
             Key::S => self.move_gpos(Vec2::xy(0, 1)),
             Key::Up | Key::Space => _ = self.rotate_current_piece(),
+            Key::Down | Key::Enter => _ = self.drop_current_piece(),
             Key::Left => _ = self.move_current_piece(Vec2::xy(-1, 0)),
             Key::Right => _ = self.move_current_piece(Vec2::xy(1, 0)),
-            Key::Down => _ = self.drop_current_piece(),
             _ => (),
         }
         self.prev_key = Some(key_down);
