@@ -2,6 +2,8 @@ use std::cmp::{max, min};
 
 use ruscii::{drawing::Pencil, keyboard::Key, spatial::Vec2, terminal::Color};
 
+use crate::cell::Cell;
+use crate::piece::Piece;
 use crate::tetromino::Tetromino;
 
 const GRID_WIDTH: i32 = 10;
@@ -16,14 +18,18 @@ enum State {
 pub struct GameState {
     dimension: Vec2,
     grid: [[Cell; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
-    gpos: Vec2,
-    current_piece: Option<Piece>,
-    pub prev_key: Option<Key>,
+    grid_pos: Vec2,
     running: State,
+    pub prev_key: Option<Key>,
+    // current piece being dropped
+    current_piece: Option<Piece>,
     drop_current_piece: bool,
-    lines_cleared: i32,
+    // next pieces
     nb_next_pieces: i32,
     next_pieces: Vec<Tetromino>,
+    // score
+    lines_cleared: i32,
+    score: i32,
 }
 
 impl GameState {
@@ -31,12 +37,13 @@ impl GameState {
         Self {
             dimension: dim,
             grid: [[Cell::Empty; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
-            gpos: Vec2::xy((dim.x - GRID_WIDTH * 2) / 2, (dim.y - GRID_HEIGHT) / 2),
-            current_piece: None,
-            prev_key: None,
+            grid_pos: Vec2::xy((dim.x - GRID_WIDTH * 2) / 2, (dim.y - GRID_HEIGHT) / 2),
             running: State::Running,
+            prev_key: None,
+            current_piece: None,
             drop_current_piece: false,
             lines_cleared: 0,
+            score: 0,
             nb_next_pieces: 3,
             next_pieces: vec![],
         }
@@ -121,18 +128,20 @@ impl GameState {
                     shadow_piece.pos.y = shadow_piece.pos.y + 1;
                 }
                 shadow_piece.pos.y = shadow_piece.pos.y - 1;
-                self.place_shadow(&shadow_piece);
+                self.place_piece(&shadow_piece, true);
 
-                self.place_piece(&current_piece);
+                self.place_piece(&current_piece, false);
             } else {
                 // piece reached the bottom
                 let current_piece = self.current_piece.unwrap();
-                self.place_piece(&current_piece);
+                self.place_piece(&current_piece, false);
+                self.score += 4;
 
                 // check if we have a full rows
                 for y in 0..GRID_HEIGHT {
                     if self.is_row_full(y) {
                         // move all rows above one row down
+                        self.score += GRID_WIDTH;
                         self.lines_cleared += 1;
                         for y2 in (0..y).rev() {
                             self.copy_row_down(y2);
@@ -146,25 +155,43 @@ impl GameState {
                 // pick a new piece
                 self.pick_current_piece();
                 // TODO: check if game over
-                self.place_piece(&self.current_piece.unwrap());
+                self.place_piece(&self.current_piece.unwrap(), true);
             }
         }
     }
 
     pub fn draw(&mut self, pencil: &mut Pencil, _step: usize) {
         // score
+        let mut y = 0;
         pencil.set_foreground(Color::White);
         pencil.set_foreground(Color::White).draw_text(
-            &format!("lines cleared: {}", self.lines_cleared),
-            self.tx_to_grid(GRID_WIDTH * 2 + 4, 0),
+            &format!("lines: {}", self.lines_cleared),
+            self.tx_to_grid(GRID_WIDTH * 2 + 4, y),
         );
+        y += 2;
+
+        pencil.set_foreground(Color::White);
+        pencil.set_foreground(Color::White).draw_text(
+            &format!("score: {}", self.score),
+            self.tx_to_grid(GRID_WIDTH * 2 + 4, y),
+        );
+        y += 2;
+
         pencil
             .set_foreground(Color::White)
-            .draw_text("next pieces:", self.tx_to_grid(GRID_WIDTH * 2 + 4, 2));
+            .draw_text("next pieces:", self.tx_to_grid(GRID_WIDTH * 2 + 4, y));
+        y += 2;
 
-        for (i, tetromino) in self.next_pieces.clone().iter().enumerate() {
+        let mut y_piece = 4;
+        for tetromino in self.next_pieces.clone().iter() {
             let mut piece = Piece::new(*tetromino);
-            piece.pos = self.tx_to_grid(GRID_WIDTH * 2 + 4, 4 + i as i32 * 5);
+            // check the 'exact' size of the pieces
+            let cells = piece.cells();
+            let min_y = cells.first().unwrap().y;
+            let max_y = cells.last().unwrap().y;
+            y -= min_y;
+            piece.pos = self.tx_to_grid(GRID_WIDTH * 2 + 6, y);
+            y += max_y + 2;
             self.draw_piece(pencil, &piece);
         }
 
@@ -201,7 +228,7 @@ impl GameState {
     //--------------------------------------------------------------------------------
 
     fn tx_to_grid(&self, x: i32, y: i32) -> Vec2 {
-        return Vec2::xy(x + self.gpos.x, y + self.gpos.y);
+        return Vec2::xy(x + self.grid_pos.x, y + self.grid_pos.y);
     }
 
     fn is_in_grid(&self, pos: Vec2) -> bool {
@@ -259,12 +286,16 @@ impl GameState {
         self.drop_current_piece = false;
     }
 
-    fn place_piece(&mut self, piece: &Piece) {
+    fn place_piece(&mut self, piece: &Piece, as_shadow: bool) {
         for cell in piece.cells().iter() {
             let x = piece.pos.x + cell.x;
             let y = piece.pos.y + cell.y;
             if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
-                self.grid[y as usize][x as usize] = Cell::Tetromino(piece.tetromino);
+                self.grid[y as usize][x as usize] = if as_shadow {
+                    Cell::Shadow
+                } else {
+                    Cell::Tetromino(piece.tetromino)
+                }
             }
         }
     }
@@ -275,16 +306,6 @@ impl GameState {
             let x = piece.pos.x + cell.x * 2;
             let y = piece.pos.y + cell.y;
             pencil.draw_text("  ", Vec2::xy(x, y));
-        }
-    }
-
-    fn place_shadow(&mut self, piece: &Piece) {
-        for cell in piece.cells().iter() {
-            let x = piece.pos.x + cell.x;
-            let y = piece.pos.y + cell.y;
-            if x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT {
-                self.grid[y as usize][x as usize] = Cell::Shadow;
-            }
         }
     }
 
@@ -299,11 +320,11 @@ impl GameState {
     }
 
     fn move_gpos(&mut self, delta: Vec2) {
-        self.gpos += delta;
-        self.gpos.x = max(0, self.gpos.x);
-        self.gpos.y = max(0, self.gpos.y);
-        self.gpos.x = min(self.dimension.x - GRID_WIDTH * 2, self.gpos.x);
-        self.gpos.y = min(self.dimension.y - GRID_WIDTH * 2, self.gpos.y);
+        self.grid_pos += delta;
+        self.grid_pos.x = max(0, self.grid_pos.x);
+        self.grid_pos.y = max(0, self.grid_pos.y);
+        self.grid_pos.x = min(self.dimension.x - GRID_WIDTH * 2, self.grid_pos.x);
+        self.grid_pos.y = min(self.dimension.y - GRID_WIDTH * 2, self.grid_pos.y);
     }
 
     fn drop_current_piece(&mut self) {
@@ -358,41 +379,8 @@ impl GameState {
                 let mut piece = Piece::new(*t);
                 piece.pos = Vec2::xy(rot * 5, t_nb as i32 * 5);
                 piece.rotate(rot);
-                self.place_piece(&piece);
+                self.place_piece(&piece, true);
             }
         }
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Piece {
-    pub tetromino: Tetromino,
-    pub rot: i32,
-    pub pos: Vec2,
-}
-
-impl Piece {
-    pub fn new(tetromino: Tetromino) -> Self {
-        Self {
-            tetromino,
-            rot: 0,
-            pos: Vec2::zero(),
-        }
-    }
-
-    pub fn rotate(&mut self, delta: i32) -> &Self {
-        self.rot = (self.rot + delta) % 4;
-        self
-    }
-
-    pub fn cells(&self) -> Vec<Vec2> {
-        self.tetromino.cells(self.rot)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Cell {
-    Empty,
-    Tetromino(Tetromino),
-    Shadow,
 }

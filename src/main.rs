@@ -5,7 +5,9 @@ use ruscii::gui::FPSCounter;
 use ruscii::keyboard::{Key, KeyEvent};
 use ruscii::terminal::Window;
 
+mod cell;
 mod gamestate;
+mod piece;
 mod tetromino;
 
 fn main() {
