@@ -19,7 +19,7 @@ impl Piece {
     }
 
     pub fn rotate(&mut self, delta: i32) -> &Self {
-        self.rot = (self.rot + delta) % 4;
+        self.rot = (self.rot + 4 + delta) % 4;
         self
     }
 

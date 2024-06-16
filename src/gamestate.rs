@@ -376,7 +376,7 @@ impl GameState {
             self.remove_piece(&piece);
 
             let mut new_piece = piece.clone();
-            new_piece.rotate(1);
+            new_piece.rotate(-1);
 
             if self.is_piece_in_grid(&new_piece) && self.is_piece_in_empty_pos(&new_piece) {
                 self.current_piece = Some(new_piece);
