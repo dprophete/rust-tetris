@@ -30,8 +30,9 @@ fn main() {
         let step = app_state.step();
         let mut pencil = Pencil::new(window.canvas_mut());
 
-        state.handle_keys_down(app_state.keyboard().get_keys_down(), step);
-        state.update(step);
-        state.draw(&mut pencil, step);
+        state.set_step(step);
+        state.handle_keys_down(app_state.keyboard().get_keys_down());
+        state.update();
+        state.draw(&mut pencil);
     });
 }

@@ -17,6 +17,7 @@ enum State {
 
 pub struct GameState {
     dimension: Vec2,
+    step: usize,
     grid: [[Cell; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
     grid_pos: Vec2,
     running: State,
@@ -37,6 +38,7 @@ impl GameState {
     pub fn new(dim: Vec2) -> Self {
         Self {
             dimension: dim,
+            step: 0,
             grid: [[Cell::Empty; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
             grid_pos: Vec2::xy((dim.x - GRID_WIDTH * 2) / 2, (dim.y - GRID_HEIGHT) / 2),
             running: State::Running,
@@ -60,16 +62,16 @@ impl GameState {
         self.pick_current_piece();
     }
 
-    pub fn handle_keys_down(&mut self, keys_down: Vec<Key>, step: usize) {
+    pub fn handle_keys_down(&mut self, keys_down: Vec<Key>) {
         if keys_down.is_empty() {
             self.prev_key = None;
         } else {
             for key_down in keys_down {
-                self.handle_key_down(key_down, step);
+                self.handle_key_down(key_down);
             }
         }
     }
-    fn handle_key_down(&mut self, key_down: Key, _step: usize) {
+    fn handle_key_down(&mut self, key_down: Key) {
         if Some(key_down) == self.prev_key {
             match key_down {
                 // don't repeat these
@@ -94,7 +96,7 @@ impl GameState {
         self.prev_key = Some(key_down);
     }
 
-    pub fn update(&mut self, step: usize) {
+    pub fn update(&mut self) {
         if self.running == State::GameOver {
             return;
         }
@@ -117,7 +119,7 @@ impl GameState {
                 11 - self.level
             };
             // note: != 0 so we don't automatically go down
-            if (step as i32) % step_delay == 0 && step != 0 {
+            if (self.step as i32) % step_delay == 0 && self.step != 0 {
                 draw_current = self.move_current_piece(Vec2::xy(0, 1));
             }
 
@@ -170,7 +172,7 @@ impl GameState {
         self.level = min(10, max(1, 1 + self.score / 100));
     }
 
-    pub fn draw(&mut self, pencil: &mut Pencil, _step: usize) {
+    pub fn draw(&mut self, pencil: &mut Pencil) {
         // score
         let mut y = 0;
         pencil.set_foreground(Color::White);
@@ -239,6 +241,10 @@ impl GameState {
         }
     }
 
+    pub fn set_step(&mut self, step: usize) {
+        self.step = step;
+    }
+
     //--------------------------------------------------------------------------------
     // helpers
     //--------------------------------------------------------------------------------
@@ -293,7 +299,7 @@ impl GameState {
         true
     }
 
-    pub fn pick_current_piece(&mut self) {
+    fn pick_current_piece(&mut self) {
         let tetromino = self.next_pieces.remove(0);
         self.next_pieces.push(Tetromino::random());
         let mut piece = Piece::new(tetromino);
