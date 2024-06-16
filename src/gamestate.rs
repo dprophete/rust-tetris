@@ -10,7 +10,7 @@ const GRID_WIDTH: i32 = 10;
 const GRID_HEIGHT: i32 = 20;
 
 #[derive(PartialEq)]
-enum State {
+enum RunningState {
     Running,
     GameOver,
 }
@@ -20,7 +20,7 @@ pub struct GameState {
     step: usize,
     grid: [[Cell; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
     grid_pos: Vec2,
-    running: State,
+    running: RunningState,
     pub prev_key: Option<Key>,
     // current piece being dropped
     current_piece: Option<Piece>,
@@ -41,7 +41,7 @@ impl GameState {
             step: 0,
             grid: [[Cell::Empty; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
             grid_pos: Vec2::xy((dim.x - GRID_WIDTH * 2) / 2, (dim.y - GRID_HEIGHT) / 2),
-            running: State::Running,
+            running: RunningState::Running,
             prev_key: None,
             current_piece: None,
             drop_current_piece: false,
@@ -97,7 +97,7 @@ impl GameState {
     }
 
     pub fn update(&mut self) {
-        if self.running == State::GameOver {
+        if self.running == RunningState::GameOver {
             return;
         }
 
@@ -163,9 +163,13 @@ impl GameState {
                 }
 
                 // pick a new piece
-                self.pick_current_piece();
-                // TODO: check if game over
-                self.place_piece(&self.current_piece.unwrap(), true);
+                let new_piece = self.pick_current_piece();
+                if self.is_piece_in_empty_pos(&new_piece) {
+                    self.place_piece(&self.current_piece.unwrap(), true);
+                } else {
+                    // game over
+                    self.running = RunningState::GameOver;
+                }
             }
         }
 
@@ -239,6 +243,11 @@ impl GameState {
                 };
             }
         }
+
+        match self.running {
+            RunningState::Running => todo!(),
+            RunningState::GameOver => todo!(),
+        }
     }
 
     pub fn set_step(&mut self, step: usize) {
@@ -299,7 +308,7 @@ impl GameState {
         true
     }
 
-    fn pick_current_piece(&mut self) {
+    fn pick_current_piece(&mut self) -> Piece {
         let tetromino = self.next_pieces.remove(0);
         self.next_pieces.push(Tetromino::random());
         let mut piece = Piece::new(tetromino);
@@ -308,6 +317,7 @@ impl GameState {
         piece.pos = Vec2::xy(GRID_WIDTH / 2 - 1, -min_y);
         self.current_piece = Some(piece);
         self.drop_current_piece = false;
+        piece
     }
 
     fn place_piece(&mut self, piece: &Piece, as_shadow: bool) {
