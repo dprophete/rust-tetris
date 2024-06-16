@@ -13,6 +13,7 @@ mod tetromino;
 fn main() {
     let mut fps_counter = FPSCounter::default();
     let mut app = App::default();
+    // let mut app = App::config(Config { fps: 30 });
     let win_size = app.window().size();
     let mut state = GameState::new((win_size * 5) / 5);
     state.init();
