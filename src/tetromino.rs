@@ -92,6 +92,7 @@ impl Tetromino {
                     Vec2::xy(1, 3),
                 ],
             },
+
             Tetromino::S => match rot {
                 0 => vec![
                     Vec2::xy(1, 0),
@@ -118,6 +119,7 @@ impl Tetromino {
                     Vec2::xy(1, 2),
                 ],
             },
+
             Tetromino::Z => match rot {
                 0 => vec![
                     Vec2::xy(0, 0),
@@ -144,6 +146,7 @@ impl Tetromino {
                     Vec2::xy(0, 2),
                 ],
             },
+
             Tetromino::L => match rot {
                 0 => vec![
                     Vec2::xy(2, 0),
@@ -170,6 +173,7 @@ impl Tetromino {
                     Vec2::xy(1, 2),
                 ],
             },
+
             Tetromino::J => match rot {
                 0 => vec![
                     Vec2::xy(0, 0),
@@ -196,6 +200,7 @@ impl Tetromino {
                     Vec2::xy(1, 2),
                 ],
             },
+
             Tetromino::T => match rot {
                 0 => vec![
                     Vec2::xy(1, 0),
