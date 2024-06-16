@@ -228,29 +228,25 @@ impl GameState {
         // score
         let mut y = 0;
         pencil.set_foreground(Color::White);
-        pencil.set_foreground(Color::White).draw_text(
+        pencil.draw_text(
             &format!("lines: {}", self.lines_cleared),
             self.tx_to_grid(GRID_WIDTH * 2 + 4, y),
         );
         y += 2;
 
-        pencil.set_foreground(Color::White);
-        pencil.set_foreground(Color::White).draw_text(
+        pencil.draw_text(
             &format!("score: {}", self.score),
             self.tx_to_grid(GRID_WIDTH * 2 + 4, y),
         );
         y += 2;
 
-        pencil.set_foreground(Color::White);
-        pencil.set_foreground(Color::White).draw_text(
+        pencil.draw_text(
             &format!("level: {}", self.level),
             self.tx_to_grid(GRID_WIDTH * 2 + 4, y),
         );
         y += 2;
 
-        pencil
-            .set_foreground(Color::White)
-            .draw_text("next pieces:", self.tx_to_grid(GRID_WIDTH * 2 + 4, y));
+        pencil.draw_text("next pieces:", self.tx_to_grid(GRID_WIDTH * 2 + 4, y));
         y += 2;
 
         for tetromino in self.next_pieces.clone().iter() {
@@ -268,7 +264,7 @@ impl GameState {
         // draw border
         pencil
             .set_background(Color::Black)
-            .set_foreground(Color::White);
+            .set_foreground(Color::Xterm(250));
         pencil.draw_vline('|', self.tx_to_grid(-1, 0), GRID_HEIGHT);
         pencil.draw_vline('|', self.tx_to_grid(GRID_WIDTH * 2, 0), GRID_HEIGHT);
         pencil.draw_hline('-', self.tx_to_grid(0, GRID_HEIGHT), GRID_WIDTH * 2);
@@ -276,7 +272,7 @@ impl GameState {
         pencil.draw_text("+", self.tx_to_grid(GRID_WIDTH * 2, GRID_HEIGHT));
 
         // draw grid
-        pencil.set_foreground(Color::LightGrey);
+        pencil.set_foreground(Color::Xterm(240));
         for (y, row) in self.grid.iter().enumerate() {
             let y = y as i32;
             for (x, cell) in row.iter().enumerate() {
@@ -287,7 +283,9 @@ impl GameState {
                     Cell::Tetromino(tetromino) => pencil
                         .set_background(tetromino.color())
                         .draw_text("  ", pos),
-                    Cell::Shadow => pencil.set_background(Color::DarkGrey).draw_text("∙∙", pos),
+                    Cell::Shadow => pencil
+                        .set_background(Color::Xterm(237))
+                        .draw_text("∙∙", pos),
                 };
             }
         }
