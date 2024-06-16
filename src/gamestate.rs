@@ -30,6 +30,7 @@ pub struct GameState {
     // score
     lines_cleared: i32,
     score: i32,
+    level: i32,
 }
 
 impl GameState {
@@ -42,10 +43,11 @@ impl GameState {
             prev_key: None,
             current_piece: None,
             drop_current_piece: false,
-            lines_cleared: 0,
-            score: 0,
             nb_next_pieces: 3,
             next_pieces: vec![],
+            lines_cleared: 0,
+            score: 0,
+            level: 1, // goes from 1 ro 10
         }
     }
 
@@ -109,17 +111,23 @@ impl GameState {
             }
 
             let mut draw_current = true;
-            let step_delay = if self.drop_current_piece { 1 } else { 10 };
-            if step % step_delay == 0 {
+            let step_delay = if self.drop_current_piece {
+                1
+            } else {
+                11 - self.level
+            };
+            // note: != 0 so we don't automatically go down
+            if (step as i32) % step_delay == 0 && step != 0 {
                 draw_current = self.move_current_piece(Vec2::xy(0, 1));
             }
 
             if draw_current {
                 // piece was able to go down
+                // let's remove it first so we can draw it properly in its new pos
                 let current_piece = self.current_piece.unwrap();
+                self.remove_piece(&current_piece);
 
                 // draw shadow
-                self.remove_piece(&current_piece);
                 let mut shadow_piece = current_piece.clone();
 
                 while self.is_piece_in_grid(&shadow_piece)
@@ -158,6 +166,8 @@ impl GameState {
                 self.place_piece(&self.current_piece.unwrap(), true);
             }
         }
+
+        self.level = min(10, max(1, 1 + self.score / 100));
     }
 
     pub fn draw(&mut self, pencil: &mut Pencil, _step: usize) {
@@ -177,12 +187,18 @@ impl GameState {
         );
         y += 2;
 
+        pencil.set_foreground(Color::White);
+        pencil.set_foreground(Color::White).draw_text(
+            &format!("level: {}", self.level),
+            self.tx_to_grid(GRID_WIDTH * 2 + 4, y),
+        );
+        y += 2;
+
         pencil
             .set_foreground(Color::White)
             .draw_text("next pieces:", self.tx_to_grid(GRID_WIDTH * 2 + 4, y));
         y += 2;
 
-        let mut y_piece = 4;
         for tetromino in self.next_pieces.clone().iter() {
             let mut piece = Piece::new(*tetromino);
             // check the 'exact' size of the pieces
@@ -281,7 +297,9 @@ impl GameState {
         let tetromino = self.next_pieces.remove(0);
         self.next_pieces.push(Tetromino::random());
         let mut piece = Piece::new(tetromino);
-        piece.pos = Vec2::xy(GRID_WIDTH / 2 - 1, 0);
+        let cells = piece.cells();
+        let min_y = cells.first().unwrap().y;
+        piece.pos = Vec2::xy(GRID_WIDTH / 2 - 1, -min_y);
         self.current_piece = Some(piece);
         self.drop_current_piece = false;
     }
