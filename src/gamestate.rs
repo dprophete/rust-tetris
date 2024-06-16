@@ -6,8 +6,11 @@ use crate::cell::Cell;
 use crate::piece::Piece;
 use crate::tetromino::Tetromino;
 
-const GRID_WIDTH: i32 = 10;
+const GRID_WIDTH: i32 = 11; // each unit == 2 dots
 const GRID_HEIGHT: i32 = 20;
+
+const GAMEOVER_WIDTH: i32 = 11; // real size
+const GAMEOVER_HEIGHT: i32 = 3;
 
 #[derive(PartialEq)]
 enum RunningState {
@@ -32,6 +35,9 @@ pub struct GameState {
     lines_cleared: i32,
     score: i32,
     level: i32,
+    // gameover
+    gameover_pos: Vec2,
+    gameover_speed: Vec2,
 }
 
 impl GameState {
@@ -50,6 +56,8 @@ impl GameState {
             lines_cleared: 0,
             score: 0,
             level: 1, // goes from 1 ro 10
+            gameover_pos: Vec2::zero(),
+            gameover_speed: Vec2::zero(),
         }
     }
 
@@ -62,6 +70,10 @@ impl GameState {
         self.pick_current_piece();
     }
 
+    pub fn set_step(&mut self, step: usize) {
+        self.step = step;
+    }
+
     pub fn handle_keys_down(&mut self, keys_down: Vec<Key>) {
         if keys_down.is_empty() {
             self.prev_key = None;
@@ -71,6 +83,7 @@ impl GameState {
             }
         }
     }
+
     fn handle_key_down(&mut self, key_down: Key) {
         if Some(key_down) == self.prev_key {
             match key_down {
@@ -83,10 +96,10 @@ impl GameState {
         }
 
         match key_down {
-            Key::A => self.move_gpos(Vec2::xy(-2, 0)),
-            Key::D => self.move_gpos(Vec2::xy(2, 0)),
-            Key::W => self.move_gpos(Vec2::xy(0, -1)),
-            Key::S => self.move_gpos(Vec2::xy(0, 1)),
+            // Key::A => self.move_gpos(Vec2::xy(-2, 0)),
+            // Key::D => self.move_gpos(Vec2::xy(2, 0)),
+            // Key::W => self.move_gpos(Vec2::xy(0, -1)),
+            // Key::S => self.move_gpos(Vec2::xy(0, 1)),
             Key::Up | Key::Space => _ = self.rotate_current_piece(),
             Key::Down | Key::Enter => _ = self.drop_current_piece(),
             Key::Left => _ = self.move_current_piece(Vec2::xy(-1, 0)),
@@ -98,6 +111,18 @@ impl GameState {
 
     pub fn update(&mut self) {
         if self.running == RunningState::GameOver {
+            if (self.step as i32) % 4 == 0 {
+                self.gameover_pos += self.gameover_speed;
+                if self.gameover_pos.x + GAMEOVER_WIDTH == GRID_WIDTH * 2
+                    || self.gameover_pos.x == 0
+                {
+                    self.gameover_speed.x = -self.gameover_speed.x
+                }
+                if self.gameover_pos.y + GAMEOVER_HEIGHT == GRID_HEIGHT || self.gameover_pos.y == 0
+                {
+                    self.gameover_speed.y = -self.gameover_speed.y
+                }
+            }
             return;
         }
 
@@ -167,8 +192,7 @@ impl GameState {
                 if self.is_piece_in_empty_pos(&new_piece) {
                     self.place_piece(&self.current_piece.unwrap(), true);
                 } else {
-                    // game over
-                    self.running = RunningState::GameOver;
+                    self.gameover();
                 }
             }
         }
@@ -176,7 +200,31 @@ impl GameState {
         self.level = min(10, max(1, 1 + self.score / 100));
     }
 
+    fn gameover(&mut self) {
+        self.running = RunningState::GameOver;
+        self.gameover_pos = Vec2::xy((GRID_WIDTH * 2 - GAMEOVER_WIDTH) / 2, 2);
+        self.gameover_speed = Vec2::xy(1, 1);
+    }
+
     pub fn draw(&mut self, pencil: &mut Pencil) {
+        match self.running {
+            RunningState::Running => self.draw_running(pencil),
+            RunningState::GameOver => self.draw_gameover(pencil),
+        }
+    }
+
+    fn draw_gameover(&mut self, pencil: &mut Pencil) {
+        self.draw_running(pencil);
+        pencil
+            .set_foreground(Color::Xterm(230))
+            .set_background(Color::Xterm(100));
+        let Vec2 { x, y } = self.gameover_pos;
+        pencil.draw_text("           ", self.tx_to_grid(x, y));
+        pencil.draw_text(" GAME OVER ", self.tx_to_grid(x, y + 1));
+        pencil.draw_text("           ", self.tx_to_grid(x, y + 2));
+    }
+
+    fn draw_running(&mut self, pencil: &mut Pencil) {
         // score
         let mut y = 0;
         pencil.set_foreground(Color::White);
@@ -243,15 +291,6 @@ impl GameState {
                 };
             }
         }
-
-        match self.running {
-            RunningState::Running => todo!(),
-            RunningState::GameOver => todo!(),
-        }
-    }
-
-    pub fn set_step(&mut self, step: usize) {
-        self.step = step;
     }
 
     //--------------------------------------------------------------------------------
@@ -353,13 +392,13 @@ impl GameState {
         }
     }
 
-    fn move_gpos(&mut self, delta: Vec2) {
-        self.grid_pos += delta;
-        self.grid_pos.x = max(0, self.grid_pos.x);
-        self.grid_pos.y = max(0, self.grid_pos.y);
-        self.grid_pos.x = min(self.dimension.x - GRID_WIDTH * 2, self.grid_pos.x);
-        self.grid_pos.y = min(self.dimension.y - GRID_WIDTH * 2, self.grid_pos.y);
-    }
+    // fn move_gpos(&mut self, delta: Vec2) {
+    //     self.grid_pos += delta;
+    //     self.grid_pos.x = max(0, self.grid_pos.x);
+    //     self.grid_pos.y = max(0, self.grid_pos.y);
+    //     self.grid_pos.x = min(self.dimension.x - GRID_WIDTH * 2, self.grid_pos.x);
+    //     self.grid_pos.y = min(self.dimension.y - GRID_WIDTH * 2, self.grid_pos.y);
+    // }
 
     fn drop_current_piece(&mut self) {
         self.drop_current_piece = true;

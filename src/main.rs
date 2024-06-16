@@ -15,7 +15,7 @@ fn main() {
     let mut app = App::default();
     // let mut app = App::config(Config { fps: 30 });
     let win_size = app.window().size();
-    let mut state = GameState::new((win_size * 5) / 5);
+    let mut state = GameState::new(win_size);
     state.init();
 
     app.run(|app_state: &mut State, window: &mut Window| {
