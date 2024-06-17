@@ -76,6 +76,7 @@ impl GameState {
 
     pub fn handle_keys_down(&mut self, keys_down: Vec<Key>) {
         if keys_down.is_empty() {
+            self.drop_current_piece = false;
             self.prev_key = None;
         } else {
             for key_down in keys_down {
@@ -88,13 +89,14 @@ impl GameState {
         if Some(key_down) == self.prev_key {
             match key_down {
                 // don't repeat these
-                Key::Up | Key::Space | Key::Down | Key::Enter => {}
+                Key::Up | Key::Space | Key::Enter => {}
                 // everything else, we just slow down the repeat
                 _ => self.prev_key = None,
             }
             return;
         }
 
+        self.prev_key = None;
         match key_down {
             // Key::A => self.move_gpos(Vec2::xy(-2, 0)),
             // Key::D => self.move_gpos(Vec2::xy(2, 0)),
