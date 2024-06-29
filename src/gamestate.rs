@@ -301,11 +301,11 @@ impl GameState {
         return Vec2::xy(x + self.grid_pos.x, y + self.grid_pos.y);
     }
 
-    fn is_in_grid(&self, pos: Vec2) -> bool {
+    fn is_in_grid(&self, pos: &Vec2) -> bool {
         pos.x >= 0 && pos.x < GRID_WIDTH && pos.y >= 0 && pos.y < GRID_HEIGHT
     }
 
-    fn is_in_empty_pos(&self, pos: Vec2) -> bool {
+    fn is_in_empty_pos(&self, pos: &Vec2) -> bool {
         let cell = self.grid[pos.y as usize][pos.x as usize];
         cell == Cell::Empty || cell == Cell::Shadow
     }
@@ -331,7 +331,7 @@ impl GameState {
 
     fn is_piece_in_empty_pos(&self, piece: &Piece) -> bool {
         for cell in piece.cells().iter() {
-            if !self.is_in_empty_pos(piece.pos + *cell) {
+            if !self.is_in_empty_pos(&(piece.pos + *cell)) {
                 return false;
             }
         }
@@ -340,7 +340,7 @@ impl GameState {
 
     fn is_piece_in_grid(&self, piece: &Piece) -> bool {
         for cell in piece.cells().iter() {
-            if !self.is_in_grid(piece.pos + *cell) {
+            if !self.is_in_grid(&(piece.pos + *cell)) {
                 return false;
             }
         }
