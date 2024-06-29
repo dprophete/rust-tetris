@@ -227,8 +227,19 @@ impl GameState {
     }
 
     fn draw_running(&mut self, pencil: &mut Pencil) {
-        // score
+        // instructions
         let mut y = 0;
+        pencil.set_foreground(Color::White);
+        pencil.draw_text(&format!("left/right: move"), self.tx_to_grid(-25, y));
+        y += 1;
+        pencil.draw_text(&format!("up/space: rotate"), self.tx_to_grid(-25, y));
+        y += 1;
+        pencil.draw_text(&format!("down/return: drop"), self.tx_to_grid(-25, y));
+        y += 2;
+        pencil.draw_text(&format!("q/esc: quit"), self.tx_to_grid(-25, y));
+
+        // score
+        y = 0;
         pencil.set_foreground(Color::White);
         pencil.draw_text(
             &format!("lines: {}", self.lines_cleared),
