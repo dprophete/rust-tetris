@@ -6,7 +6,7 @@ A simple terminal based tretris game in rust.
 
 why?
 ===
-I am learning rust and wanted to play a little with the terminal. And tetris is such a nice and simple game to get started with a language.
+I am learning rust and wanted to play a little with the terminal. That and tetris is such a nice and simple game to get started with a language.
 
 run
 ===
